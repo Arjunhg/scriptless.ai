@@ -2,6 +2,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { coral, CoralError, withCoralTenant } from "@/lib/coral/client";
 import { logAgentQuery, newRunId } from "@/lib/coral/trace-logger";
+import { normalizeCoralSql } from "@/lib/coral/sql-normalizer";
 
 const MAX_SQL_LEN = 4000;
 const DENY_PATTERNS = [
@@ -29,7 +30,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "invalid_json" }, { status: 400 });
   }
 
-  const sql = (payload.sql || "").trim();
+  const sql = normalizeCoralSql((payload.sql || "").trim());
 
   if (!sql) {
     return NextResponse.json({ error: "sql is required" }, { status: 400 });
@@ -73,6 +74,7 @@ export async function POST(req: NextRequest) {
       count: rows.length,
       duration_ms: ms,
       run_id: runId,
+      sql,
     });
   } catch (err: unknown) {
     const ms = Math.round(performance.now() - t0);
