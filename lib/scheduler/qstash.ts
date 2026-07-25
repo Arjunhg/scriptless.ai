@@ -41,18 +41,22 @@ export async function upsertQStashSchedule(params: {
     console.log("[scheduler] QStash registration skipped in development");
     return `dev-mock-schedule-${params.dbScheduleId}`;
   }
-  
-  const client = getClient();
-  if (params.existingQStashScheduleId) {
-    await client.schedules.delete(params.existingQStashScheduleId).catch(() => undefined);
-  }
 
+  const client = getClient();
+
+  // Pass the existing scheduleId so QStash atomically replaces the old schedule
+  // rather than doing a delete-then-create. This avoids a race window where a
+  // transient delete failure would leave two active schedules firing for the
+  // same DB record, which could cause duplicate test runs and double billing.
   const schedule = await client.schedules.create({
     destination: getEndpointUrl(),
     cron: hoursToCron(params.intervalHours),
     body: JSON.stringify({ scheduleId: params.dbScheduleId }),
     headers: { "Content-Type": "application/json" },
     retries: 3,
+    ...(params.existingQStashScheduleId
+      ? { scheduleId: params.existingQStashScheduleId }
+      : {}),
   });
   return schedule.scheduleId;
 }
