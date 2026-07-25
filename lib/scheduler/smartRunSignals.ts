@@ -30,7 +30,7 @@ export async function getRecentFiles(schedule: {
   repoName: string;
 }): Promise<Set<string>> {
   const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-  const sql = `SELECT files, commit__message AS message FROM github.commits WHERE owner = ${quote(schedule.repoOwner)} AND repo = ${quote(schedule.repoName)} AND COALESCE(commit__author__date, commit__committer__date) >= ${quote(since)} LIMIT 50`;
+  const sql = `SELECT files, commit__message AS message FROM github.commits WHERE owner = ${quote(schedule.repoOwner)} AND repo = ${quote(schedule.repoName)} AND COALESCE(commit__author__date, commit__committer__date) >= ${quote(since)} ORDER BY COALESCE(commit__author__date, commit__committer__date) DESC LIMIT 50`;
   const rows = await withCoralTenant(schedule.userId, () => tracedSql(sql, {
     runId: newRunId(), source: "github.commits", agentRole: "smart_run", timeoutMs: 15000,
   }));

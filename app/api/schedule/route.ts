@@ -53,19 +53,44 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "invalid_notify_email" }, { status: 400 });
   }
 
-  const githubToken = (await cookies()).get("gh_token")?.value;
-  if (!githubToken) {
-    return NextResponse.json({
-      error: "github_token_missing",
-      detail: "Please ensure you are connected to GitHub before scheduling.",
-    }, { status: 400 });
-  }
-
-  const encrypted = encryptToken(githubToken);
-  const nextRunAt = new Date(Date.now() + intervalHours * 60 * 60 * 1000);
   const [existing] = await db.select().from(scheduledRuns).where(
     and(eq(scheduledRuns.userId, userId), eq(scheduledRuns.repoId, repoId))
   );
+
+  // The GitHub token is only needed when enabling a schedule — it gets encrypted
+  // and stored so the cron runner can authenticate later. When the user is only
+  // disabling (pausing) an existing schedule, the token path is irrelevant and
+  // must not block the request, e.g. when the gh_token cookie has expired.
+  let encryptedFields: {
+    encryptedGithubToken: string;
+    tokenIv: string;
+    tokenTag: string;
+  };
+
+  if (enabled) {
+    const githubToken = (await cookies()).get("gh_token")?.value;
+    if (!githubToken) {
+      return NextResponse.json({
+        error: "github_token_missing",
+        detail: "Please ensure you are connected to GitHub before scheduling.",
+      }, { status: 400 });
+    }
+    const encrypted = encryptToken(githubToken);
+    encryptedFields = {
+      encryptedGithubToken: encrypted.encrypted,
+      tokenIv: encrypted.iv,
+      tokenTag: encrypted.tag,
+    };
+  } else {
+    // Reuse whatever token is already stored; we are only pausing the schedule.
+    encryptedFields = {
+      encryptedGithubToken: existing?.encryptedGithubToken ?? "",
+      tokenIv: existing?.tokenIv ?? "",
+      tokenTag: existing?.tokenTag ?? "",
+    };
+  }
+
+  const nextRunAt = new Date(Date.now() + intervalHours * 60 * 60 * 1000);
   const values = {
     userId,
     repoId,
@@ -75,9 +100,7 @@ export async function POST(req: NextRequest) {
     intervalHours,
     enabled,
     notifyEmail,
-    encryptedGithubToken: encrypted.encrypted,
-    tokenIv: encrypted.iv,
-    tokenTag: encrypted.tag,
+    ...encryptedFields,
     nextRunAt,
     qstashScheduleId: existing?.qstashScheduleId ?? null,
     updatedAt: new Date(),
@@ -87,8 +110,8 @@ export async function POST(req: NextRequest) {
     target: [scheduledRuns.userId, scheduledRuns.repoId],
     set: {
       repoOwner, repoName, scope, intervalHours, enabled, notifyEmail,
-      encryptedGithubToken: encrypted.encrypted,
-      tokenIv: encrypted.iv, tokenTag: encrypted.tag, nextRunAt,
+      ...encryptedFields,
+      nextRunAt,
       qstashScheduleId: existing?.qstashScheduleId ?? null,
       updatedAt: new Date(),
     },

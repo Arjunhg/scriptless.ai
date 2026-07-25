@@ -85,7 +85,7 @@ export async function POST(req: NextRequest) {
       failedTests: summary.failedTests,
       status: summary.status,
     }, schedule.userId);
-    if (schedule.notifyEmail && summary.failedTests > 0) {
+    if (schedule.notifyEmail && (summary.failedTests > 0 || summary.status === "failed")) {
       const workspaceUrl = process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:4000");
       await sendRunSummaryEmail({
         to: schedule.notifyEmail,
@@ -93,6 +93,7 @@ export async function POST(req: NextRequest) {
         totalTests: summary.totalTests,
         passedTests: summary.passedTests,
         failedTests: summary.failedTests,
+        errorMessage: summary.errorMessage,
         workspaceUrl,
       });
     }

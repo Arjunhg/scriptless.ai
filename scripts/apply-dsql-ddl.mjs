@@ -105,13 +105,60 @@ const statements = [
     updated_at timestamp NOT NULL DEFAULT now()
   )`,
   `CREATE UNIQUE INDEX ASYNC coral_connections_user_source_idx
-    ON coral_connections (user_id, source_name)`
+    ON coral_connections (user_id, source_name)`,
+
+  `CREATE TABLE scheduled_runs (
+    id bigint PRIMARY KEY GENERATED ALWAYS AS IDENTITY (CACHE 65536) NOT NULL,
+    user_id varchar(255) NOT NULL,
+    repo_id bigint NOT NULL,
+    repo_owner varchar(255) NOT NULL,
+    repo_name varchar(255) NOT NULL,
+    scope varchar(50) NOT NULL DEFAULT 'all',
+    interval_hours integer NOT NULL DEFAULT 24,
+    enabled integer NOT NULL DEFAULT 1,
+    notify_email varchar(255),
+    encrypted_github_token text,
+    token_iv varchar(64),
+    token_tag varchar(64),
+    last_run_at timestamp,
+    next_run_at timestamp,
+    qstash_schedule_id varchar(255),
+    created_at timestamp NOT NULL DEFAULT now(),
+    updated_at timestamp NOT NULL DEFAULT now()
+  )`,
+  `CREATE UNIQUE INDEX ASYNC scheduled_runs_user_repo_idx
+    ON scheduled_runs (user_id, repo_id)`,
+
+  `CREATE TABLE scheduled_run_logs (
+    id bigint PRIMARY KEY GENERATED ALWAYS AS IDENTITY (CACHE 65536) NOT NULL,
+    schedule_id bigint NOT NULL,
+    user_id varchar(255) NOT NULL,
+    repo_id bigint NOT NULL,
+    repo_name varchar(255) NOT NULL,
+    scope varchar(50) NOT NULL,
+    total_tests integer NOT NULL DEFAULT 0,
+    passed_tests integer NOT NULL DEFAULT 0,
+    failed_tests integer NOT NULL DEFAULT 0,
+    skipped_tests integer NOT NULL DEFAULT 0,
+    duration_ms integer NOT NULL DEFAULT 0,
+    status varchar(50) NOT NULL DEFAULT 'completed',
+    error_message text,
+    created_at timestamp NOT NULL DEFAULT now()
+  )`
 ];
 
 await client.connect();
 for (const [i, sql] of statements.entries()){
-    await client.query(sql);
-    console.log(`✓ [${i + 1}/${statements.length}] applied`);
+    try {
+        await client.query(sql);
+        console.log(`✓ [${i + 1}/${statements.length}] applied`);
+    } catch (err) {
+        if (err.code === '42P07' || err.message?.includes('already exists')) {
+            console.log(`⚠ [${i + 1}/${statements.length}] already exists, skipping`);
+        } else {
+            throw err;
+        }
+    }
 }
 
 await client.end();
