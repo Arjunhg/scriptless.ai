@@ -48,3 +48,4 @@ sidecar/.env.local
 *.sql
 *.ps1
 .vercel
+*.txt

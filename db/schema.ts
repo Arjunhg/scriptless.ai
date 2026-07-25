@@ -117,6 +117,53 @@ export const coralConnections = pgTable(
   })
 );
 
+export const scheduledRuns = pgTable(
+  "scheduled_runs",
+  {
+    id: integer("id").primaryKey().generatedAlwaysAsIdentity({ cache: 65536 }),
+    // Scheduled runs are invoked without a Clerk session, so this stores the
+    // stable Clerk user id rather than the local integer users.id value.
+    userId: varchar("user_id", { length: 255 }).notNull(),
+    repoId: integer("repo_id").notNull(),
+    repoOwner: varchar("repo_owner", { length: 255 }).notNull(),
+    repoName: varchar("repo_name", { length: 255 }).notNull(),
+    scope: varchar("scope", { length: 50 }).notNull().default("all"),
+    intervalHours: integer("interval_hours").notNull().default(24),
+    enabled: integer("enabled").notNull().default(1),
+    notifyEmail: varchar("notify_email", { length: 255 }),
+    encryptedGithubToken: text("encrypted_github_token"),
+    tokenIv: varchar("token_iv", { length: 64 }),
+    tokenTag: varchar("token_tag", { length: 64 }),
+    lastRunAt: timestamp("last_run_at"),
+    nextRunAt: timestamp("next_run_at"),
+    qstashScheduleId: varchar("qstash_schedule_id", { length: 255 }),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    userRepoUnique: uniqueIndex("scheduled_runs_user_repo_idx").on(
+      table.userId,
+      table.repoId
+    ),
+  })
+);
+
+export const scheduledRunLogs = pgTable("scheduled_run_logs", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity({ cache: 65536 }),
+  scheduleId: integer("schedule_id").notNull(),
+  userId: varchar("user_id", { length: 255 }).notNull(),
+  repoId: integer("repo_id").notNull(),
+  repoName: varchar("repo_name", { length: 255 }).notNull(),
+  scope: varchar("scope", { length: 50 }).notNull(),
+  totalTests: integer("total_tests").notNull().default(0),
+  passedTests: integer("passed_tests").notNull().default(0),
+  failedTests: integer("failed_tests").notNull().default(0),
+  skippedTests: integer("skipped_tests").notNull().default(0),
+  durationMs: integer("duration_ms").notNull().default(0),
+  status: varchar("status", { length: 50 }).notNull().default("completed"),
+  errorMessage: text("error_message"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
 
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;

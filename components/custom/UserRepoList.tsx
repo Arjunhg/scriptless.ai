@@ -14,6 +14,8 @@ import axios from 'axios'
 import { UserDetailContext } from '@/context/UserDetailContext'
 import TestCaseList from './TestCaseList'
 import RepoSettings from './RepoSettings'
+import ScheduleHistory from './ScheduleHistory'
+import ScheduleSettings from './ScheduleSettings'
 
 type props = {
     repoList: UserRepo[],
@@ -228,9 +230,11 @@ function UserRepoList({
                                                 Smart Run
                                             </Button>
                                             <RepoSettings repo={repo} setReload={setReload} />
+                                            <ScheduleSettings repo={repo} />
                                         </div>
                                     </div>
                                 </div>
+                                {activeRepoId === repo.repoId && <ScheduleHistory repo={repo} />}
                                 <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4'>
 
                                     <StatusCard
