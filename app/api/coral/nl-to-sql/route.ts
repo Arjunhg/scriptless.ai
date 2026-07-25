@@ -2,6 +2,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { GoogleGenAI } from "@google/genai";
 import { coral, CoralColumn, CoralError, withCoralTenant } from "@/lib/coral/client";
+import { normalizeCoralSql } from "@/lib/coral/sql-normalizer";
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
 
@@ -247,48 +248,46 @@ export async function POST(req: NextRequest) {
   }
 
   const columnsSection = columnsBlock
-    ? `Verified columns for the tables most relevant to this question (use ONLY these columns for these tables; do NOT reference any column not listed here):
-${columnsBlock}
-
-`
+    ? `Verified columns for the tables most relevant to this question (use ONLY these columns for these tables; do NOT reference any column not listed here): ${columnsBlock}`
     : "";
 
   const contextBlock =
     contextOwner && contextRepo
       ? `Default repository context:
-- owner = '${contextOwner}'
-- repo = '${contextRepo}'
-If the user asks about commits/issues/PRs without specifying a repo, use the defaults above for required filters.`
-      : "No default repository context is available.";
+        - owner = '${contextOwner}'
+        - repo = '${contextRepo}'
+        If the user asks about commits/issues/PRs without specifying a repo, use the defaults above for required filters.`
+    : "No default repository context is available.";
 
   const prompt = `You are a SQL generation assistant for Coral, a read-only federated SQL engine.
 
-Convert the user's natural-language question into ONE valid SELECT statement.
+  Convert the user's natural-language question into ONE valid SELECT statement.
 
-${contextBlock}
+  ${contextBlock}
 
-Available tables (use ONLY these, do NOT invent table names):
-${catalogBlock}
+  Available tables (use ONLY these, do NOT invent table names):
+  ${catalogBlock}
 
-${columnsSection}Rules:
-1. Output ONLY raw SQL. No markdown fences, commentary, or explanations.
-2. SELECT only. Never INSERT/UPDATE/DELETE/DROP/CREATE/ALTER.
-3. If a table lists REQUIRED FILTERS, include them in the WHERE clause as equality predicates.
-4. Use ILIKE for substring searches.
-5. Use UNION ALL when the user asks for items across sources, with a literal kind column.
-6. Default LIMIT to 25 unless the user specifies a number.
-7. Quote string literals with single quotes; escape internal quotes by doubling.
-8. Use fully qualified table names (schema.table).
-9. For table functions, call them in the FROM clause using named arguments, for example: SELECT * FROM schema.function(arg_name => 'value').
-10. For splunk.search_results, pass a full Splunk SPL string in the search argument. When the user asks for logs or events, build a bounded SPL search and include "| fields _time host source sourcetype _raw index splunk_server | head 25" inside that string.
-11. If the question cannot be answered with these tables, output exactly: -- CANNOT_ANSWER
-12. CRITICAL: Only reference columns that appear in the "Verified columns" section for that exact table. Never use a column that is not listed there. If a column you want (for example created_at, body, or description) is NOT listed for a table, do not SELECT, filter, or ORDER BY it — choose a listed column or drop that clause.
-13. When you need columns like created_at, updated_at, body, or description, prefer a base table (relation type "table", e.g. github.issues) over a search-style table function (e.g. github.search_issues), because search functions usually expose only title/url/state/number and have no timestamp column.
-14. In a UNION ALL, every branch must SELECT the same number of columns in the same order; if one source lacks a column another has (e.g. a timestamp), select NULL for it in the branch that lacks it so the column lists line up.
+  ${columnsSection}Rules:
+  1. Output ONLY raw SQL. No markdown fences, commentary, or explanations.
+  2. SELECT only. Never INSERT/UPDATE/DELETE/DROP/CREATE/ALTER.
+  3. If a table lists REQUIRED FILTERS, include them in the WHERE clause as equality predicates.
+  4. Use ILIKE for substring searches.
+  5. Use UNION ALL when the user asks for items across sources, with a literal kind column.
+  6. Default LIMIT to 25 unless the user specifies a number.
+  7. Quote string literals with single quotes; escape internal quotes by doubling.
+  8. Use fully qualified table names (schema.table).
+  9. For table functions, call them in the FROM clause using named arguments, for example: SELECT * FROM schema.function(arg_name => 'value').
+  10. For splunk.search_results, pass a full Splunk SPL string in the search argument. When the user asks for logs or events, build a bounded SPL search and include "| fields _time host source sourcetype _raw index splunk_server | head 25" inside that string.
+  11. If the question cannot be answered with these tables, output exactly: -- CANNOT_ANSWER
+  12. CRITICAL: Only reference columns that appear in the "Verified columns" section for that exact table. Never use a column that is not listed there. If a column you want (for example created_at, body, or description) is NOT listed for a table, do not SELECT, filter, or ORDER BY it — choose a listed column or drop that clause.
+  13. When you need columns like created_at, updated_at, body, or description, prefer a base table (relation type "table", e.g. github.issues) over a search-style table function (e.g. github.search_issues), because search functions usually expose only title/html_url/state/number and have no timestamp column.
+  14. In a UNION ALL, every branch must SELECT the same number of columns in the same order. Prefer columns shared by every branch. Never emit bare NULL or CAST(NULL AS ...) in a UNION ALL: Coral cannot safely concatenate untyped null arrays. If a missing text value must be represented, use '' and use 0 only for a missing numeric value.
+  15. The github.search_issues table function requires the named argument q, never query. Its URL column is html_url, never url.
 
-User question: ${text.trim()}
+  User question: ${text.trim()}
 
-SQL:`;
+  SQL:`;
 
   let generatedSql = "";
   try {
@@ -312,6 +311,8 @@ SQL:`;
     .replace(/^```\s*/i, "")
     .replace(/```$/, "")
     .trim();
+
+  generatedSql = normalizeCoralSql(generatedSql);
 
   if (generatedSql === "-- CANNOT_ANSWER") {
     const wantsCommits = /\bcommit(s)?\b/i.test(text);
