@@ -31,7 +31,7 @@ export async function GET(
   }
 
   const [testCase] = await db
-    .select({ userId: TestCasesTable.userId })
+    .select({ userId: TestCasesTable.userId, status: TestCasesTable.status })
     .from(TestCasesTable)
     .where(eq(TestCasesTable.id, testCaseId));
 
@@ -46,6 +46,12 @@ export async function GET(
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
 
+  // Test-scoped traces are produced by failure enrichment. A passed/running
+  // test must not display historical rows from an earlier failed attempt.
+  if (testCase.status !== "failed") {
+    return NextResponse.json({ runs: [] });
+  }
+
   const queries = await db
     .select()
     .from(agentQueries)
@@ -53,8 +59,15 @@ export async function GET(
     .orderBy(desc(agentQueries.createdAt))
     .limit(100);
 
+  // Keep the panel focused on the latest failed execution even if rows from
+  // older versions of the app are still present in the database.
+  const latestRunId = queries[0]?.runId;
+  const latestQueries = latestRunId
+    ? queries.filter((query) => query.runId === latestRunId)
+    : queries;
+
   const byRun: Record<string, typeof queries> = {};
-  for (const query of queries) {
+  for (const query of latestQueries) {
     const runKey = query.runId ?? "untagged";
     (byRun[runKey] ||= []).push(query);
   }
