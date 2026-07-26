@@ -2,6 +2,10 @@ import {
   openai,
   NVIDIA_TEXT_MODEL,
 } from "./client";
+import {
+  tracedChatCompletion,
+  type NvidiaChatCompletionUsage,
+} from "@/lib/observability/nvidia-tracing";
 import { TEST_GENERATION_SYSTEM_PROMPT } from "./prompts/testGeneration";
 import { TEST_CASE_TOOL_DEFINITION } from "./tools/testCaseTool";
 
@@ -42,16 +46,20 @@ function tryParseTestCases(raw: string): ParsedTestCases | null {
 async function requestJsonFallback(
   messages: { role: "system" | "user"; content: string }[]
 ): Promise<ParsedTestCases | null> {
-  const response = await openai.chat.completions.create({
+  const response = await tracedChatCompletion({
     model: NVIDIA_TEXT_MODEL,
-    messages: [
-      ...messages,
-      {
-        role: "user",
-        content:
-          "Return ONLY a valid JSON object with a testCases array. Do not use markdown.",
-      },
-    ],
+    operation: "test_generation.json_fallback",
+    generate: () => openai.chat.completions.create({
+      model: NVIDIA_TEXT_MODEL,
+      messages: [
+        ...messages,
+        {
+          role: "user",
+          content:
+            "Return ONLY a valid JSON object with a testCases array. Do not use markdown.",
+        },
+      ],
+    }),
   });
 
   const content = response.choices[0]?.message?.content ?? "";
@@ -75,38 +83,51 @@ export async function generateTestCases(
     },
   ] as const;
 
-  const stream = await openai.chat.completions.create({
+  const generation = await tracedChatCompletion({
     model: NVIDIA_TEXT_MODEL,
-    messages: [...messages],
-    tools: [TEST_CASE_TOOL_DEFINITION],
-    tool_choice: {
-      type: "function",
-      function: { name: "submit_test_cases" },
-    },
-    temperature: 0.7,
-    top_p: 0.9,
-    max_tokens: 3000,
-    stream: true
-  });
+    operation: "test_generation",
+    generate: async () => {
+      const stream = await openai.chat.completions.create({
+        model: NVIDIA_TEXT_MODEL,
+        messages: [...messages],
+        tools: [TEST_CASE_TOOL_DEFINITION],
+        tool_choice: {
+          type: "function",
+          function: { name: "submit_test_cases" },
+        },
+        temperature: 0.7,
+        top_p: 0.9,
+        max_tokens: 3000,
+        stream: true,
+        stream_options: { include_usage: true },
+      });
 
-  let content = "";
-  let toolArguments = "";
+      let content = "";
+      let toolArguments = "";
+      let usage: NvidiaChatCompletionUsage | null | undefined;
 
-  for await (const chunk of stream){
-    const delta = chunk.choices[0]?.delta;
+      for await (const chunk of stream) {
+        const delta = chunk.choices[0]?.delta;
+        usage = chunk.usage ?? usage;
 
-    if(delta?.content){
-      content += delta.content;
-    }
+        if (delta?.content) {
+          content += delta.content;
+        }
 
-    if(delta?.tool_calls){
-      for(const toolCall of delta.tool_calls){
-        if(toolCall.function?.arguments){
-          toolArguments += toolCall.function.arguments;
+        if (delta?.tool_calls) {
+          for (const toolCall of delta.tool_calls) {
+            if (toolCall.function?.arguments) {
+              toolArguments += toolCall.function.arguments;
+            }
+          }
         }
       }
-    }
-  }
+
+      return { content, toolArguments, usage };
+    },
+  });
+
+  const { content, toolArguments } = generation;
 
   let parsed: ParsedTestCases | null = null;
 

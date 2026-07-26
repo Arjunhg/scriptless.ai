@@ -133,7 +133,8 @@ export async function executeTestCase(params: Params): Promise<ExecuteTestCaseRe
         visionAnalysis = await analyzeScreenshot(
           screenshot,
           `${testCase.title}: ${testCase.description}. Expected: ${testCase.expectedResult || "N/A"}`,
-          failureContext.items
+          failureContext.items,
+          runId
         );
       }
     } catch (enrichmentError) {
