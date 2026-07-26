@@ -72,6 +72,7 @@ export async function POST(req: NextRequest) {
         customPrompt,
         localUserId,
         trackingUserId: userId,
+        trigger: "interactive",
       });
 
       if (result.errorMessage === "insufficient_credits") {
