@@ -3,6 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 import { GoogleGenAI } from "@google/genai";
 import { coral, CoralColumn, CoralError, withCoralTenant } from "@/lib/coral/client";
 import { normalizeCoralSql } from "@/lib/coral/sql-normalizer";
+import { tracedGenerateContent } from "@/lib/observability/gemini-tracing";
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
 
@@ -72,9 +73,13 @@ JSON:`;
 
   let raw = "";
   try {
-    const response = await ai.models.generateContent({
+    const response = await tracedGenerateContent({
       model: "gemini-3.1-flash-lite",
-      contents: selectionPrompt,
+      operation: "nl_to_sql.select_tables",
+      generate: () => ai.models.generateContent({
+        model: "gemini-3.1-flash-lite",
+        contents: selectionPrompt,
+      }),
     });
     raw = (response.text || "").trim();
   } catch {
@@ -291,9 +296,13 @@ export async function POST(req: NextRequest) {
 
   let generatedSql = "";
   try {
-    const response = await ai.models.generateContent({
+    const response = await tracedGenerateContent({
       model: "gemini-3.1-flash-lite",
-      contents: prompt,
+      operation: "nl_to_sql.generate",
+      generate: () => ai.models.generateContent({
+        model: "gemini-3.1-flash-lite",
+        contents: prompt,
+      }),
     });
     generatedSql = (response.text || "").trim();
   } catch (err) {

@@ -1,5 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
 import { TestCasesTable, repositories } from "@/db/schema";
+import { tracedGenerateContent } from "@/lib/observability/gemini-tracing";
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
 
@@ -27,6 +28,7 @@ export async function generateTestScript(params: {
   baseUrl: string;
   githubToken: string;
   customPrompt?: string;
+  runId: string;
 }): Promise<string> {
   if (!params.githubToken) throw new Error("github_token_missing");
   const files = Array.isArray(params.testCase.targetFiles) ? params.testCase.targetFiles : [];
@@ -51,7 +53,15 @@ export async function generateTestScript(params: {
         Source context:\n${repoContext || "No source files were available."}
 
 The script runs inside an async function with injected page and console variables. Define an assert helper, navigate to the target route, wait for the app to settle, use resilient role/label/text selectors, log useful steps, and assert the expected result with a case-insensitive substring check. Do not import modules or wrap the answer in markdown.`;
-  const response = await ai.models.generateContent({ model: "gemini-3.1-flash-lite", contents: prompt });
+  const response = await tracedGenerateContent({
+    model: "gemini-3.1-flash-lite",
+    operation: "script_generation",
+    runId: params.runId,
+    generate: () => ai.models.generateContent({
+      model: "gemini-3.1-flash-lite",
+      contents: prompt,
+    }),
+  });
   const script = (response.text || "").replace(/^```(?:javascript|js)?\s*/i, "").replace(/```\s*$/, "").trim();
   if (!script) throw new Error("script_generation_failed");
   return script;
