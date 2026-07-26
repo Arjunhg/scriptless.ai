@@ -84,6 +84,7 @@ export async function runScheduledTests(schedule: ScheduledRunInput): Promise<Sc
           mode: "cached",
           localUserId: schedule.localUserId,
           trackingUserId: schedule.userId,
+          trigger: "scheduled",
         }));
         if (result.errorMessage === "insufficient_credits") {
           skippedTests += 1;
