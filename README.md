@@ -381,6 +381,20 @@ NEXT_PUBLIC_APP_URL=http://localhost:4000
 </details>
 
 <details>
+<summary><b>Observability — SigNoz</b></summary>
+
+```env
+OTEL_SERVICE_NAME=zeroscript
+OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://localhost:4318/v1/traces
+```
+
+The endpoint defaults to the local SigNoz OTLP/HTTP collector shown above, so
+these variables are optional for local development. Set them when using a
+different service name or collector endpoint.
+
+</details>
+
+<details>
 <summary><b>Database — Amazon Aurora DSQL</b></summary>
 
 ```env
