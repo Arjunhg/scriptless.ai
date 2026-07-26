@@ -31,7 +31,7 @@ export async function tracedSql(
   }
 
   const ms = Math.round(performance.now() - t0);
-  void logAgentQuery({
+  await logAgentQuery({
     testCaseId: opts.testCaseId,
     runId: opts.runId,
     source: opts.source,

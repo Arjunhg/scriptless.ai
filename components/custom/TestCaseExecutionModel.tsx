@@ -325,6 +325,7 @@ export default function TestExecutionModal({ isOpen, onClose, testCases, reposit
         setIsExecuting(true);
         setCurrentIdx(0);
         setSelectedDetailId(testCases[0].id);
+        setDetailTab("script");
         hasSpokenRunSummaryRef.current = false;
 
         try {
@@ -684,13 +685,13 @@ export default function TestExecutionModal({ isOpen, onClose, testCases, reposit
                                                 <div className="bg-blue-100/70 px-3.5 py-2 border-b border-blue-200 flex items-center gap-1.5">
                                                     <Database className="h-3.5 w-3.5 text-blue-700" />
                                                     <span className="text-xs font-semibold text-blue-900">
-                                                        Cross-Source Context (via Coral)
+                                                         Related Data Context
                                                     </span>
                                                     <Badge
                                                         variant="outline"
                                                         className="ml-auto text-[10px] border-blue-300 text-blue-700 bg-white"
                                                     >
-                                                        {currentSelectedResult?.failureContext?.queries_run.length ?? 0} queries
+                                                         {currentSelectedResult?.failureContext?.queries_run.length ?? 0} lookups
                                                     </Badge>
                                                 </div>
                                                 <div className="flex-1 overflow-auto scrollbar-hide p-3 space-y-3 select-text">
@@ -698,7 +699,7 @@ export default function TestExecutionModal({ isOpen, onClose, testCases, reposit
                                                         <p className="text-sm text-blue-900/70">
                                                             {coralAvailable
                                                                 ? "No related items found across connected sources."
-                                                                : "Coral is unavailable or no sources are configured for this workspace."}
+                                                                : "Related data isn't available right now. Your test result is not affected."}
                                                         </p>
                                                     )}
 
@@ -753,7 +754,7 @@ export default function TestExecutionModal({ isOpen, onClose, testCases, reposit
                                                     {currentSelectedResult?.failureContext?.queries_run && (
                                                         <details className="mt-3 text-[11px]">
                                                             <summary className="cursor-pointer text-blue-700 font-semibold">
-                                                                View {currentSelectedResult.failureContext.queries_run.length} SQL queries
+                                                                 View {currentSelectedResult.failureContext.queries_run.length} lookup details
                                                             </summary>
                                                             <div className="mt-2 space-y-2">
                                                                 {currentSelectedResult.failureContext.queries_run.map((query, i) => (

@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { TestCasesTable, repositories, users } from "@/db/schema";
 import { analyzeScreenshot } from "@/lib/inference/analyzeScreenshot";
+import { deleteAgentQueriesForTestCase } from "@/lib/db/integrity";
 import { fetchFailureContext, FailureContext } from "@/lib/scheduler/failureContext";
 import { generateTestScript } from "@/lib/scheduler/generateTestScript";
 import { captureScreenshot, serializeLogArgs } from "@/lib/scheduler/executionHelpers";
@@ -44,6 +45,14 @@ export async function executeTestCase(params: Params): Promise<ExecuteTestCaseRe
     return { status: "error", logs, creditsUsed: 0, errorMessage: "insufficient_credits" };
   }
 
+  // Agent Trace is scoped to the latest execution. Remove failure-enrichment
+  // rows from an earlier attempt before a new run can create fresh ones.
+  try {
+    await deleteAgentQueriesForTestCase(testCase.id);
+  } catch (traceCleanupError) {
+    console.warn("[scheduler] previous agent trace cleanup skipped", traceCleanupError);
+  }
+
   const [repoById] = testCase.repoId
     ? await db.select().from(repositories).where(eq(repositories.repoId, Number(testCase.repoId)))
     : [];
@@ -69,9 +78,18 @@ export async function executeTestCase(params: Params): Promise<ExecuteTestCaseRe
         customPrompt: params.customPrompt,
       });
       creditsUsed = 70;
-      await db.update(TestCasesTable).set({ browserbaseScript: scriptText, status: "running" }).where(eq(TestCasesTable.id, testCase.id));
+      await db.update(TestCasesTable).set({
+        browserbaseScript: scriptText,
+        status: "running",
+        visionAnalysis: null,
+        failureContext: null,
+      }).where(eq(TestCasesTable.id, testCase.id));
     } else {
-      await db.update(TestCasesTable).set({ status: "running" }).where(eq(TestCasesTable.id, testCase.id));
+      await db.update(TestCasesTable).set({
+        status: "running",
+        visionAnalysis: null,
+        failureContext: null,
+      }).where(eq(TestCasesTable.id, testCase.id));
     }
 
     const customConsole = {

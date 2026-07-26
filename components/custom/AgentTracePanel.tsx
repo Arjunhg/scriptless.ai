@@ -46,8 +46,22 @@ const ROLE_STYLES: Record<string, string> = {
 
 const STATUS_STYLES: Record<string, string> = {
   ok: "bg-emerald-100 text-emerald-800",
-  error: "bg-rose-100 text-rose-800",
+  error: "bg-amber-100 text-amber-800",
   timeout: "bg-amber-100 text-amber-800",
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  ok: "Completed",
+  error: "Unavailable",
+  timeout: "Timed out",
+};
+
+const ROLE_LABELS: Record<string, string> = {
+  failure_enricher: "Related context",
+  writer: "Query writer",
+  analyzer: "Analyzer",
+  smart_run: "Smart run",
+  explorer: "Data explorer",
 };
 
 const SOURCE_STYLES: Record<string, string> = {
@@ -76,7 +90,7 @@ export default function AgentTracePanel({ testCaseId }: { testCaseId: number }) 
         setExpandedRuns(new Set([nextRuns[0].runId]));
       }
     } catch (err: any) {
-      setError(err.response?.data?.error || err.message || "Failed to load trace");
+      setError("We couldn't load the related-data trace. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -110,7 +124,7 @@ export default function AgentTracePanel({ testCaseId }: { testCaseId: number }) 
         <Zap className="h-3.5 w-3.5 text-primary" />
         <span className="text-xs font-semibold text-gray-700">Agent Trace</span>
         <Badge variant="outline" className="ml-1 text-[10px] border-gray-300">
-          {runs?.reduce((sum, run) => sum + run.queryCount, 0) ?? 0} Coral queries
+          {runs?.reduce((sum, run) => sum + run.queryCount, 0) ?? 0} data lookups
         </Badge>
 
         <Button
@@ -138,7 +152,7 @@ export default function AgentTracePanel({ testCaseId }: { testCaseId: number }) 
 
         {!loading && !error && runs && runs.length === 0 && (
           <p className="text-sm text-gray-500 italic">
-            No Coral queries were recorded for this test yet.
+            No related-data lookups were recorded for this test run.
           </p>
         )}
 
@@ -196,7 +210,7 @@ export default function AgentTracePanel({ testCaseId }: { testCaseId: number }) 
                               ROLE_STYLES[query.agentRole] ?? "bg-gray-100 text-gray-800"
                             } border-none`}
                           >
-                            {query.agentRole}
+                            {ROLE_LABELS[query.agentRole] ?? "Related data"}
                           </Badge>
                           <Database className="h-3 w-3 text-gray-400" />
                           <span
@@ -216,7 +230,7 @@ export default function AgentTracePanel({ testCaseId }: { testCaseId: number }) 
                                 STATUS_STYLES[query.status] ?? "bg-gray-100 text-gray-800"
                               } border-none`}
                             >
-                              {query.status}
+                              {STATUS_LABELS[query.status] ?? "Needs attention"}
                             </Badge>
                           </div>
                         </button>
@@ -226,10 +240,11 @@ export default function AgentTracePanel({ testCaseId }: { testCaseId: number }) 
                             <div className="rounded bg-gray-950 text-emerald-300 p-2.5 font-mono text-[10.5px] leading-relaxed overflow-auto scrollbar-hide max-h-48">
                               <pre className="whitespace-pre-wrap break-words">{query.sql}</pre>
                             </div>
-                            {query.errorMessage && (
-                              <div className="rounded bg-rose-50 border border-rose-200 px-2.5 py-1.5 text-[10.5px] text-rose-800">
-                                <span className="font-semibold">Error: </span>
-                                {query.errorMessage}
+                            {query.status !== "ok" && (
+                              <div className="rounded bg-amber-50 border border-amber-200 px-2.5 py-1.5 text-[10.5px] text-amber-900">
+                                {query.status === "timeout"
+                                  ? "This related-data lookup took too long to finish. Your test result is not affected."
+                                  : "This related-data lookup couldn't be completed. Your test result is not affected."}
                               </div>
                             )}
                           </div>
