@@ -76,6 +76,7 @@ export async function executeTestCase(params: Params): Promise<ExecuteTestCaseRe
         baseUrl: params.baseUrl,
         githubToken: params.githubToken,
         customPrompt: params.customPrompt,
+        runId,
       });
       creditsUsed = 70;
       await db.update(TestCasesTable).set({
