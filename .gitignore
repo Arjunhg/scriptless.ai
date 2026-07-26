@@ -45,7 +45,10 @@ next-env.d.ts
 sidecar/.env.local
 
 *.md
+!README.md
 *.sql
 *.ps1
 .vercel
 *.txt
+
+/pours
