@@ -9,6 +9,7 @@ import { deleteAgentQueriesForTestCase } from "@/lib/db/integrity";
 import { fetchFailureContext, FailureContext } from "@/lib/scheduler/failureContext";
 import { generateTestScript } from "@/lib/scheduler/generateTestScript";
 import { captureScreenshot, serializeLogArgs } from "@/lib/scheduler/executionHelpers";
+import { buildExpectShim, normalizeGeneratedScript } from "@/lib/scheduler/scriptRuntime";
 import { newRunId } from "@/lib/coral/trace-logger";
 import { pendoTrackServer } from "@/lib/pendo/track";
 import { traceAgentRun, traceAgentStep } from "@/lib/observability/agent-tracing";
@@ -132,17 +133,24 @@ export async function executeTestCase(params: Params): Promise<ExecuteTestCaseRe
       page = context.pages()[0] ?? null;
       if (!page) throw new Error("browserbase_page_missing");
       page.on("console", (message: any) => logs.push(`[BROWSER] [${message.type().toUpperCase()}] ${message.text()}`));
+      // Generated scripts are function bodies, not Node modules — strip
+      // require/import lines and duplicate assert declarations before compiling.
+      const { script: normalizedScript, removed } = normalizeGeneratedScript(scriptText);
+      if (removed.length > 0) {
+        logs.push(`[SYSTEM] Script normalized: removed ${removed.join(", ")}.`);
+      }
       const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
-      const runFn = new AsyncFunction("page", "assert", "console", scriptText);
+      const runFn = new AsyncFunction("page", "assert", "expect", "console", normalizedScript);
       const assertHelper = (condition: boolean, message?: string) => {
         if (!condition) throw new Error(message || "Assertion failed");
       };
+      const expectShim = buildExpectShim();
       await traceAgentStep(
         "script_execution",
         {},
         async () => {
           try {
-            await runFn(page, assertHelper, customConsole);
+            await runFn(page, assertHelper, expectShim, customConsole);
           } finally {
             const span = trace.getActiveSpan();
             for (const message of logs) {
