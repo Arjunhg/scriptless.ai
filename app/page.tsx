@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useState, useEffect, useRef, ReactNode, FC } from "react";
-import { useUser } from "@clerk/nextjs";
+import { useUser, useSignIn, useClerk } from "@clerk/nextjs";
 
 // ─── Design Tokens ───────────────────────────────────────────────
 const C = {
@@ -141,6 +141,61 @@ const MagicButton: FC<MagicButtonProps> = ({ children, primary = true, onClick, 
         ...style,
       }}
     >{children}</button>
+  );
+};
+
+// ─── Judges demo login ────────────────────────────────────────────
+// One-click sign-in for hackathon judges: issues a single-use Clerk
+// sign-in token for the pre-configured demo account (see
+// /api/judges-signin) and activates that session.
+const JudgesButton: FC = () => {
+  const { isLoaded: clerkLoaded, signIn, setActive } = useSignIn();
+  const { signOut } = useClerk();
+  const { isSignedIn } = useUser();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleClick = async () => {
+    if (!clerkLoaded || loading) return;
+    setError(null);
+    setLoading(true);
+    try {
+      if (isSignedIn) {
+        await signOut();
+      }
+      const res = await fetch("/api/judges-signin", { method: "POST" });
+      const data = await res.json();
+      if (!res.ok || !data.token) {
+        throw new Error(data.error || "Demo sign-in is not configured.");
+      }
+      await signIn.create({ strategy: "ticket", ticket: data.token });
+      if (signIn.createdSessionId) {
+        await setActive({ session: signIn.createdSessionId });
+      }
+      window.location.href = "/workspace";
+    } catch (err: any) {
+      setError(err?.errors?.[0]?.message || err?.message || "Could not sign in to the demo account.");
+      setLoading(false);
+    }
+  };
+
+  return (
+    <>
+      <MagicButton primary={false} onClick={handleClick} style={{ position: "relative" }}>
+        {loading ? "Signing in…" : "Judges"}
+      </MagicButton>
+      {error && (
+        <div style={{
+          position: "fixed", top: 72, right: 16, zIndex: 200,
+          maxWidth: 320, padding: "10px 14px", borderRadius: 8,
+          background: C.failBg, border: `1px solid ${C.failText}44`,
+          color: C.failText, fontFamily: "'Geist', sans-serif", fontSize: 13,
+          boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
+        }}>
+          {error}
+        </div>
+      )}
+    </>
   );
 };
 
@@ -401,6 +456,7 @@ const AutoTestLanding: FC = () => {
               <Link href={accountHref} className="landing-nav-link" onClick={() => setMobileMenuOpen(false)}>
                 {accountLabel}
               </Link>
+              <JudgesButton />
               <MagicButton
                 onClick={() => {
                   setMobileMenuOpen(false);
