@@ -21,13 +21,38 @@ function getClient(): Client {
   return new Client({ token });
 }
 
+// QStash must be able to reach the endpoint over the public internet, so a
+// loopback/private URL is never valid here. Guarding explicitly (instead of
+// letting QStash reject it) lets us fall back to VERCEL_URL when
+// NEXT_PUBLIC_APP_URL was only set for local development.
+function isNonPublicUrl(url: string): boolean {
+  try {
+    const { hostname } = new URL(url);
+    return (
+      hostname === "localhost" ||
+      hostname === "127.0.0.1" ||
+      hostname === "::1" ||
+      hostname === "[::1]" ||
+      hostname.endsWith(".local") ||
+      hostname.endsWith(".internal")
+    );
+  } catch {
+    return true;
+  }
+}
+
 function getEndpointUrl(): string {
   const configuredUrl = process.env.NEXT_PUBLIC_APP_URL;
   const vercelUrl = process.env.VERCEL_URL
     ? `https://${process.env.VERCEL_URL}`
     : undefined;
-  const baseUrl = configuredUrl || vercelUrl;
-  if (!baseUrl) throw new Error("public_app_url_not_configured");
+  const baseUrl =
+    configuredUrl && !isNonPublicUrl(configuredUrl)
+      ? configuredUrl
+      : vercelUrl;
+  if (!baseUrl || isNonPublicUrl(baseUrl)) {
+    throw new Error("public_app_url_not_configured");
+  }
   return `${baseUrl.replace(/\/$/, "")}/api/cron/run-scheduled`;
 }
 
