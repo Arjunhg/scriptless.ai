@@ -3,7 +3,7 @@ import { openai, getVisionModelChain } from "./client";
 import { extractMessageContent } from "./extractMessageContent";
 import { tracedChatCompletion } from "@/lib/observability/nvidia-tracing";
 
-const tracer = trace.getTracer("zeroscript-nvidia");
+const tracer = trace.getTracer("scriptless-nvidia");
 
 const MAX_IMAGE_BYTES = 3 * 1024 * 1024;
 
@@ -127,7 +127,7 @@ export async function analyzeScreenshot(
 ): Promise<string> {
   return tracer.startActiveSpan("nvidia.vision_analysis", async (span) => {
     span.setAttribute("gen_ai.system", "nvidia");
-    span.setAttribute("zeroscript.operation", "failure_vision_analysis");
+    span.setAttribute("scriptless.operation", "failure_vision_analysis");
     if (runId) span.setAttribute("agent.run_id", runId);
 
     let lastError: Error | null = null;

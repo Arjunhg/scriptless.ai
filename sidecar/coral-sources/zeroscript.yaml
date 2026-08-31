@@ -1,29 +1,29 @@
-﻿name: zeroscript
+﻿name: scriptless
 version: 0.1.0
 dsl_version: 3
 backend: http
-description: ZeroScript.ai test cases and connected repositories as a Coral source.
+description: Scriptless.ai test cases and connected repositories as a Coral source.
 
 inputs:
-  ZEROSCRIPT_API_KEY:
+  SCRIPTLESS_API_KEY:
     kind: secret
-    hint: Generate from ZeroScript workspace API Keys.
-  ZEROSCRIPT_BASE_URL:
+    hint: Generate from Scriptless workspace API Keys.
+  SCRIPTLESS_BASE_URL:
     kind: variable
-    default: https://zeroscript-ai-eta.vercel.app
+    default: https://scriptless-sigma.vercel.app/
 
-base_url: "{{input.ZEROSCRIPT_BASE_URL}}"
+base_url: "{{input.SCRIPTLESS_BASE_URL}}"
 
 auth:
   type: HeaderAuth
   headers:
     - name: Authorization
       from: template
-      template: "Bearer {{input.ZEROSCRIPT_API_KEY}}"
+      template: "Bearer {{input.SCRIPTLESS_API_KEY}}"
 
 tables:
   - name: test_cases
-    description: AI-generated ZeroScript test cases and run metadata.
+    description: AI-generated Scriptless test cases and run metadata.
     filters:
       - name: status
         type: Utf8
@@ -94,7 +94,7 @@ tables:
           type: Timestamp
 
   - name: repositories
-    description: GitHub repositories connected to ZeroScript.
+    description: GitHub repositories connected to Scriptless.
     request:
       method: GET
       path: /api/coral/expose/repositories
@@ -127,5 +127,5 @@ tables:
           type: Utf8
 
 test_queries:
-  - "SELECT count(*) AS n FROM zeroscript.test_cases"
-  - "SELECT name FROM zeroscript.repositories"
+  - "SELECT count(*) AS n FROM scriptless.test_cases"
+  - "SELECT name FROM scriptless.repositories"

@@ -1,6 +1,6 @@
 import { SpanStatusCode, trace } from "@opentelemetry/api";
 
-const tracer = trace.getTracer("zeroscript-agent");
+const tracer = trace.getTracer("scriptless-agent");
 
 type AgentAttributes = Record<string, string | number>;
 

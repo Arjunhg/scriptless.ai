@@ -59,6 +59,60 @@ async function main() {
     throw new Error("expect shim should have thrown");
   }
 
+  // regression: `.not` must retry like Playwright, not fail on the first
+  // poll where the positive condition happens to hold. Fake locator whose
+  // text says "Loading graph canvas..." for 600ms, then clears — the exact
+  // case that used to fail with
+  // "expect(...).not.toContainText() failed after 25000ms (actual: object)".
+  const makeFakeLocator = (clearsAfterMs: number | null) => {
+    const start = Date.now();
+    const text = () =>
+      clearsAfterMs !== null && Date.now() - start < clearsAfterMs
+        ? "Loading graph canvas..."
+        : "5 nodes and 12 edges";
+    return {
+      isVisible: async () => true,
+      count: async () => 1,
+      textContent: async () => text(),
+      allTextContents: async () => [text()],
+    } as any;
+  };
+
+  // 1. text clears within the timeout -> `.not` must PASS (and fast)
+  const startedAt = Date.now();
+  await expect(makeFakeLocator(600)).not.toContainText("Loading graph canvas...", { timeout: 5000 });
+  const elapsed = Date.now() - startedAt;
+  if (elapsed > 3000) {
+    throw new Error(`satisfied .not assertion polled too long: ${elapsed}ms`);
+  }
+
+  // 2. text never clears -> `.not` must FAIL with a useful message
+  let notThrew = false;
+  let notMessage = "";
+  try {
+    await expect(makeFakeLocator(null)).not.toContainText("Loading graph canvas...", { timeout: 300 });
+  } catch (error) {
+    notThrew = true;
+    notMessage = error instanceof Error ? error.message : String(error);
+  }
+  if (!notThrew) {
+    throw new Error(".not matcher should have failed when text never cleared");
+  }
+  if (!notMessage.includes("Loading graph canvas") || notMessage.includes("(actual: object)")) {
+    throw new Error(`unhelpful failure message: ${notMessage}`);
+  }
+
+  // 3. positive matcher still fails when text never appears
+  let positiveThrew = false;
+  try {
+    await expect(makeFakeLocator(null)).toContainText("Loading graph canvas...", { timeout: 10 });
+  } catch {
+    positiveThrew = true;
+  }
+  if (!positiveThrew) {
+    throw new Error("positive matcher should have failed");
+  }
+
   console.log("expect shim OK");
 }
 

@@ -204,7 +204,7 @@ export function parseVoiceCommand(transcript: string): VoiceCommand {
     (hasDataNoun && hasJoinCue)
   ) {
     const cleaned = raw
-      .replace(/^(hey|hi|hello|please|zeroscript|coral)[,\s]+/i, "")
+      .replace(/^(hey|hi|hello|please|scriptless|coral)[,\s]+/i, "")
       .replace(/^(can you|could you|would you|will you)\s+/i, "")
       .trim();
     return { type: "QUERY_DATA", text: cleaned };

@@ -1,6 +1,6 @@
 import { SpanStatusCode, trace } from "@opentelemetry/api";
 
-const tracer = trace.getTracer("zeroscript-gemini");
+const tracer = trace.getTracer("scriptless-gemini");
 
 type GeminiUsageMetadata = {
   promptTokenCount?: number;
@@ -24,7 +24,7 @@ export async function tracedGenerateContent<T extends GeminiGenerateResponse>(pa
     span.setAttribute("gen_ai.system", "gemini");
     span.setAttribute("gen_ai.operation.name", "generate_content");
     span.setAttribute("gen_ai.request.model", params.model);
-    span.setAttribute("zeroscript.operation", params.operation);
+    span.setAttribute("scriptless.operation", params.operation);
     if (params.runId) span.setAttribute("agent.run_id", params.runId);
 
     try {

@@ -335,7 +335,7 @@ function UserRepoList({
                                                     } catch (e) { /* ignore tracking errors */ }
 
                                                     window.dispatchEvent(
-                                                        new CustomEvent("zeroscript:smart-run", {
+                                                        new CustomEvent("scriptless:smart-run", {
                                                             detail: { repoId: repo.repoId, tests: prioritizedTests },
                                                         })
                                                     );

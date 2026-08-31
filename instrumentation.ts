@@ -5,7 +5,7 @@ diag.setLogger(new DiagConsoleLogger(), DiagLogLevel.ERROR);
 
 export function register() {
   registerOTel({
-    serviceName: process.env.OTEL_SERVICE_NAME || 'zeroscript',
+    serviceName: process.env.OTEL_SERVICE_NAME || 'scriptless',
     traceExporter: new OTLPHttpJsonTraceExporter({
       // Self-hosted SigNoz via Foundry — no ingestion key or TLS is required.
       url:

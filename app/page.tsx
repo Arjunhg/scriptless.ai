@@ -201,7 +201,7 @@ const JudgesButton: FC = () => {
 
 // ─── Terminal Animation ────────────────────────────────────────────
 const TERM_LINES: { delay: number; color: string; text: string }[] = [
-  { delay: 0, color: "#7c7a9e", text: "$ zeroscript connect --repo github.com/acme/checkout-app" },
+  { delay: 0, color: "#7c7a9e", text: "$ scriptless connect --repo github.com/acme/checkout-app" },
   { delay: 700, color: C.primary, text: "✦ Cloning repository..." },
   { delay: 1400, color: "#c4c2e8", text: "  → 3 routes detected  ·  42 components mapped" },
   { delay: 2100, color: C.primary, text: "✦ Generating test cases with AI..." },
@@ -242,7 +242,7 @@ const TerminalMockup: FC = () => {
           <span key={c} style={{ width: 11, height: 11, borderRadius: "50%", background: c, display: "inline-block" }} />
         ))}
         <span style={{ fontFamily: "'Geist Mono', monospace", fontSize: 11, color: "#7c7a9e", marginLeft: 8 }}>
-          zeroscript — zsh
+          scriptless — zsh
         </span>
       </div>
       {/* Lines */}
@@ -434,7 +434,7 @@ const AutoTestLanding: FC = () => {
           <div className="landing-nav-inner">
             {/* Logo */}
             <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
-              <span style={{ fontFamily: "'Geist', sans-serif", fontWeight: 500, fontSize: 15, letterSpacing: "-0.01em", color: C.ink }}>ZeroScript.ai</span>
+              <span style={{ fontFamily: "'Geist', sans-serif", fontWeight: 500, fontSize: 15, letterSpacing: "-0.01em", color: C.ink }}>Scriptless.ai</span>
               <span style={{
                 fontFamily: "'Geist Mono', monospace", fontSize: 10, fontWeight: 500,
                 color: C.primaryDark, background: C.primaryBg, border: `1px solid ${C.primaryMid}`,
@@ -538,10 +538,10 @@ const AutoTestLanding: FC = () => {
         <footer style={{ borderTop: `1px solid ${C.border}`, padding: "2.5rem 2rem", background: C.surface }}>
           <div style={{ maxWidth: 1200, margin: "0 auto", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 16 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ fontFamily: "'Geist', sans-serif", fontWeight: 500, fontSize: 14, color: C.ink }}>ZeroScript.ai</span>
+              <span style={{ fontFamily: "'Geist', sans-serif", fontWeight: 500, fontSize: 14, color: C.ink }}>Scriptless.ai</span>
             </div>
             <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 13, color: C.subtle }}>
-              © {new Date().getFullYear()} ZeroScript.ai. All rights reserved.
+              © {new Date().getFullYear()} Scriptless.ai. All rights reserved.
             </span>
           </div>
         </footer>

@@ -5,8 +5,8 @@ import Provider from "./provider";
 import Script from "next/script";
 
 export const metadata: Metadata = {
-  title: "ZeroScript.ai | Agentic Automation",
-  description: "Unlock the power of AI-driven test automation with ZeroScript.ai. Our platform empowers you to create, manage, and execute automated tests effortlessly, without writing a single line of code. Experience the future of testing with intelligent agents that adapt to your application's needs, ensuring faster releases and higher quality software.",
+  title: "Scriptless.ai | Agentic Automation",
+  description: "Unlock the power of AI-driven test automation with Scriptless.ai. Our platform empowers you to create, manage, and execute automated tests effortlessly, without writing a single line of code. Experience the future of testing with intelligent agents that adapt to your application's needs, ensuring faster releases and higher quality software.",
 };
 
 export default function RootLayout({

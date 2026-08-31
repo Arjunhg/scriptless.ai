@@ -15,7 +15,7 @@ const bb = new Browserbase({
  * session. The client uses this to discover which pageId to play back.
  *
  * The recording is fetched server-side with OUR Browserbase API key, so the
- * ZeroScript end user never needs a Browserbase account.
+ * Scriptless end user never needs a Browserbase account.
  */
 export async function GET(
     _req: NextRequest,

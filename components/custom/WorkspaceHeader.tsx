@@ -18,7 +18,7 @@ function WorkspaceHeader() {
             >
                 <div className="flex flex-col leading-none">
                     <span className="text-[18px] font-semibold tracking-tight text-zinc-900 group-hover:text-blue-600 transition-colors">
-                        ZeroScript
+                        Scriptless
                         <span className="text-blue-600">.ai</span>
                     </span>
 

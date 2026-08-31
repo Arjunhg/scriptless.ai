@@ -74,8 +74,8 @@ function TestCaseList({
             setIsModelOpen(true);
         };
 
-        window.addEventListener("zeroscript:smart-run", handler);
-        return () => window.removeEventListener("zeroscript:smart-run", handler);
+        window.addEventListener("scriptless:smart-run", handler);
+        return () => window.removeEventListener("scriptless:smart-run", handler);
     }, [repository?.repoId]);
 
     const runSelectedTests = () => {

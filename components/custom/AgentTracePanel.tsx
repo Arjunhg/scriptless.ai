@@ -69,7 +69,7 @@ const SOURCE_STYLES: Record<string, string> = {
   sentry: "bg-rose-100 text-rose-700",
   linear: "bg-violet-100 text-violet-700",
   splunk: "bg-orange-100 text-orange-700",
-  zeroscript: "bg-sky-100 text-sky-700",
+  scriptless: "bg-sky-100 text-sky-700",
 };
 
 export default function AgentTracePanel({ testCaseId }: { testCaseId: number }) {

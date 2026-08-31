@@ -1,6 +1,6 @@
 import { SpanStatusCode, trace } from "@opentelemetry/api";
 
-const tracer = trace.getTracer("zeroscript-nvidia");
+const tracer = trace.getTracer("scriptless-nvidia");
 
 export type NvidiaChatCompletionUsage = {
   prompt_tokens?: number;
@@ -23,7 +23,7 @@ export async function tracedChatCompletion<T extends NvidiaChatCompletionResult>
     span.setAttribute("gen_ai.system", "nvidia");
     span.setAttribute("gen_ai.operation.name", "chat");
     span.setAttribute("gen_ai.request.model", params.model);
-    span.setAttribute("zeroscript.operation", params.operation);
+    span.setAttribute("scriptless.operation", params.operation);
     if (params.runId) span.setAttribute("agent.run_id", params.runId);
     if (params.attemptIndex != null) {
       span.setAttribute("nvidia.attempt_index", params.attemptIndex);

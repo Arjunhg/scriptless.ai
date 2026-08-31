@@ -188,27 +188,57 @@ const allChecks: Record<string, Check> = { ...locatorChecks, ...pageChecks, ...v
 
 type Matchers = Record<string, (...args: unknown[]) => Promise<void>>;
 
+function previewValue(value: unknown): string {
+  if (value instanceof RegExp) return value.toString();
+  try {
+    const text = JSON.stringify(value) ?? String(value);
+    return text.length > 200 ? `${text.slice(0, 200)}…` : text;
+  } catch {
+    return String(value);
+  }
+}
+
+/** Human-readable description of `expect(actual)`'s actual for error messages. */
+async function describeActual(actual: unknown): Promise<string> {
+  if (typeof actual === "string") return previewValue(actual);
+  if (isLocator(actual)) {
+    try {
+      const text = await actual.textContent();
+      return text === null || text.trim() === ""
+        ? "locator (no text)"
+        : previewValue(text.trim());
+    } catch {
+      return "locator (text unavailable)";
+    }
+  }
+  if (isPage(actual)) return `page ${actual.url()}`;
+  return previewValue(actual);
+}
+
 function buildMatchers(actual: unknown, invert: boolean): Matchers {
   const matchers: Matchers = {};
   for (const [name, check] of Object.entries(allChecks)) {
     matchers[name] = async (...args: unknown[]) => {
       const parsed = parseArgs(args);
       const run = () => check(actual, parsed).catch(() => false);
-      const passed = await (async () => {
-        const deadline = Date.now() + parsed.timeout;
-        for (;;) {
-          if (await run()) return true;
-          if (Date.now() >= deadline) return false;
-          await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
-        }
-      })();
-      if (invert === passed) {
-        const verb = invert ? `not.${name}` : name;
-        throw new Error(
-          `expect(...).${verb}() failed after ${parsed.timeout}ms` +
-          ` (actual: ${typeof actual === "string" ? JSON.stringify(actual.slice(0, 200)) : typeof actual})`
-        );
+      const deadline = Date.now() + parsed.timeout;
+      for (;;) {
+        // Playwright semantics: poll until the assertion is satisfied —
+        // for `.not` matchers that means the positive check is false (e.g.
+        // "Loading..." text has cleared), failing only if it holds for the
+        // whole timeout. Never the reverse: a momentary true must not fail
+        // a `.not` assertion, and a satisfied `.not` must not poll on.
+        const satisfied = invert ? !(await run()) : await run();
+        if (satisfied) return;
+        if (Date.now() >= deadline) break;
+        await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
       }
+      const verb = invert ? `not.${name}` : name;
+      const expected = parsed.rest.length === 1 ? previewValue(parsed.rest[0]) : previewValue(parsed.rest);
+      throw new Error(
+        `expect(...).${verb}() failed after ${parsed.timeout}ms` +
+          ` (expected${invert ? " not" : ""}: ${expected}, actual: ${await describeActual(actual)})`
+      );
     };
   }
   return matchers;
